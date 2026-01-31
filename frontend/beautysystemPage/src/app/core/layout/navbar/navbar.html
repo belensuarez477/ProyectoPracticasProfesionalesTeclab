@@ -1,1 +1,179 @@
-<p>navbar works!</p>
+<nav class="navbar">
+  <div class="navbar-container">
+    <!-- Logo -->
+    <div class="navbar-logo">
+      <a href="/">
+        <span class="logo-text">BeautySystem</span>
+      </a>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="navbar-menu">
+      <button class="nav-btn home-btn" (click)="navigateHome()">
+        <span class="icon">🏠</span> Inicio
+      </button>
+      <button class="nav-btn login-btn" (click)="openModal('login')">
+        <span class="icon">🔐</span> Inicio de Sesión
+      </button>
+      <button class="nav-btn register-btn" (click)="openModal('register')">
+        <span class="icon">📝</span> Registrarse
+      </button>
+      <button class="nav-btn contact-btn" (click)="openModal('contact')">
+        <span class="icon">📧</span> Contacto
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- LOGIN MODAL -->
+<div class="modal" [class.active]="activeModal === 'login'" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <button class="close-btn" (click)="closeModal()">✕</button>
+    <h2>Inicio de Sesión</h2>
+    <form (ngSubmit)="submitLogin()">
+      <div class="form-group">
+        <label for="login-email">Correo Electrónico</label>
+        <input 
+          type="email" 
+          id="login-email" 
+          placeholder="correo@example.com"
+          [(ngModel)]="loginForm.email"
+          name="email"
+          required
+        />
+      </div>
+      <div class="form-group">
+        <label for="login-password">Contraseña</label>
+        <input 
+          type="password" 
+          id="login-password" 
+          placeholder="Ingresa tu contraseña"
+          [(ngModel)]="loginForm.password"
+          name="password"
+          required
+        />
+      </div>
+      <button type="submit" class="submit-btn">Ingresar</button>
+    </form>
+  </div>
+</div>
+
+<!-- REGISTER MODAL -->
+<div class="modal" [class.active]="activeModal === 'register'" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <button class="close-btn" (click)="closeModal()">✕</button>
+    <h2>Registrarse</h2>
+    <form (ngSubmit)="submitRegister()">
+      <div class="form-group">
+        <label for="register-name">Nombre Completo</label>
+        <input 
+          type="text" 
+          id="register-name" 
+          placeholder="Tu nombre"
+          [(ngModel)]="registerForm.name"
+          name="name"
+          required
+        />
+      </div>
+      <div class="form-group">
+        <label for="register-email">Correo Electrónico</label>
+        <input 
+          type="email" 
+          id="register-email" 
+          placeholder="correo@example.com"
+          [(ngModel)]="registerForm.email"
+          name="email"
+          required
+        />
+      </div>
+      <div class="form-group">
+        <label for="register-phone">Teléfono</label>
+        <input 
+          type="tel" 
+          id="register-phone" 
+          placeholder="Tu teléfono"
+          [(ngModel)]="registerForm.phone"
+          name="phone"
+        />
+      </div>
+      <div class="form-group">
+        <label for="register-password">Contraseña</label>
+        <input 
+          type="password" 
+          id="register-password" 
+          placeholder="Crea una contraseña"
+          [(ngModel)]="registerForm.password"
+          name="password"
+          required
+        />
+      </div>
+      <div class="form-group">
+        <label for="register-confirm">Confirmar Contraseña</label>
+        <input 
+          type="password" 
+          id="register-confirm" 
+          placeholder="Confirma tu contraseña"
+          [(ngModel)]="registerForm.confirmPassword"
+          name="confirmPassword"
+          required
+        />
+      </div>
+      <button type="submit" class="submit-btn">Crear Cuenta</button>
+    </form>
+  </div>
+</div>
+
+<!-- CONTACT MODAL -->
+<div class="modal" [class.active]="activeModal === 'contact'" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <button class="close-btn" (click)="closeModal()">✕</button>
+    <h2>Contacto</h2>
+    <form (ngSubmit)="submitContact()">
+      <div class="form-group">
+        <label for="contact-name">Nombre</label>
+        <input 
+          type="text" 
+          id="contact-name" 
+          placeholder="Tu nombre"
+          [(ngModel)]="contactForm.name"
+          name="name"
+          required
+        />
+      </div>
+      <div class="form-group">
+        <label for="contact-email">Correo Electrónico</label>
+        <input 
+          type="email" 
+          id="contact-email" 
+          placeholder="correo@example.com"
+          [(ngModel)]="contactForm.email"
+          name="email"
+          required
+        />
+      </div>
+      <div class="form-group">
+        <label for="contact-subject">Asunto</label>
+        <input 
+          type="text" 
+          id="contact-subject" 
+          placeholder="Asunto del mensaje"
+          [(ngModel)]="contactForm.subject"
+          name="subject"
+          required
+        />
+      </div>
+      <div class="form-group">
+        <label for="contact-message">Mensaje</label>
+        <textarea 
+          id="contact-message" 
+          placeholder="Tu mensaje..."
+          [(ngModel)]="contactForm.message"
+          name="message"
+          rows="5"
+          required
+        ></textarea>
+      </div>
+      <button type="submit" class="submit-btn">Enviar Mensaje</button>
+    </form>
+  </div>
+</div>

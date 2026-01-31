@@ -1,0 +1,167 @@
+/* =========================
+   Fondo general con imagen fija
+========================= */
+:host {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;   /* centra verticalmente */
+  align-items: center;       /* centra horizontalmente */
+  min-height: 100vh;
+  position: relative;
+  background: url('/spa-bg.png') no-repeat center center fixed;
+  background-size: cover;
+}
+
+/* Capa oscura para mejorar lectura */
+:host::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(35, 25, 50, 0.35);
+  z-index: 0;
+}
+
+/* =========================
+   Contenedor principal
+========================= */
+.home {
+  position: relative;
+  z-index: 1;
+  max-width: 1000px;
+  margin: 120px auto 40px;   /* margen superior para dejar espacio al navbar fijo */
+  padding: 40px 20px;
+  box-sizing: border-box;
+
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(4px);
+
+  border-radius: 12px;
+}
+
+/* Secciones generales */
+.home div {
+  margin-bottom: 40px;
+  padding: 25px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgba(140, 130, 160, 0.1);
+  border: 1px solid #ece6f2;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  animation: fadeInUp 0.7s ease forwards;
+  opacity: 0;
+}
+
+/* Delay progresivo */
+.home div:nth-child(1) { animation-delay: 0.1s; }
+.home div:nth-child(2) { animation-delay: 0.2s; }
+.home div:nth-child(3) { animation-delay: 0.3s; }
+.home div:nth-child(4) { animation-delay: 0.4s; }
+
+/* Hover */
+.home div:hover {
+  transform: translateY(-5px) scale(1.01);
+  box-shadow: 0 10px 20px rgba(140, 130, 160, 0.18);
+}
+
+/* =========================
+   Títulos
+========================= */
+.home h1 {
+  font-size: 32px;
+  margin-bottom: 15px;
+  color: #5b4b73;
+}
+
+.home h2 {
+  font-size: 22px;
+  margin-bottom: 15px;
+  color: #7a6896;
+  position: relative;
+}
+
+.home h2::after {
+  content: "";
+  width: 0;
+  height: 3px;
+  background: #c5b6da;
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  transition: width 0.3s ease;
+}
+
+.home div:hover h2::after {
+  width: 60px;
+}
+
+/* Texto */
+.home p {
+  line-height: 1.6;
+  font-size: 16px;
+  max-width: 70ch;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .home {
+    padding: 30px 15px;
+  }
+
+  .home h1 { font-size: 26px; }
+  .home h2 { font-size: 20px; }
+}
+
+@media (max-width: 480px) {
+  .home {
+    padding: 20px 10px;
+  }
+
+  .home h1 { font-size: 22px; }
+  .home h2 { font-size: 18px; }
+
+  .home p,
+  .home li {
+    font-size: 14px;
+  }
+}
+
+.home app-welcome,
+.home app-description,
+.home app-steps,
+.home app-benefits {
+  display: block;
+  margin-bottom: 40px;
+}
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.home app-welcome,
+.home app-description,
+.home app-steps,
+.home app-benefits {
+  display: block;
+  animation: fadeSlideUp 0.8s ease forwards;
+  opacity: 0;
+}
+.home app-welcome {
+  animation-delay: 0.2s;
+}
+
+.home app-description {
+  animation-delay: 0.4s;
+}
+
+.home app-steps {
+  animation-delay: 0.6s;
+}
+
+.home app-benefits {
+  animation-delay: 0.8s;
+}

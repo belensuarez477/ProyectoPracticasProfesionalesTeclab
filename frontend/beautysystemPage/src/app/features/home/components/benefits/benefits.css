@@ -1,0 +1,49 @@
+.benefits {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 35px;
+  text-align: left;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  animation: fadeSlideUp 1.1s ease forwards;
+}
+
+.benefits h2 {
+  color: #6d5b8c;
+  margin-bottom: 25px;
+  font-style: italic;
+}
+
+.benefits-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.benefits-list li {
+  margin-bottom: 18px;
+  padding-left: 30px;
+  position: relative;
+  color: #444;
+  line-height: 1.6;
+  font-size: 1rem;
+}
+
+.benefits-list li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #9c7bd6;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

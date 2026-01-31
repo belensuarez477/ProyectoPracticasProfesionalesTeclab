@@ -1,1 +1,166 @@
-<p>dashboard-page works!</p>
+<div class="dashboard-container">
+  <!-- Header -->
+  <div class="dashboard-header">
+    <h1>Dashboard - Mi Perfil</h1>
+    <div class="user-info" *ngIf="currentUser">
+      <span>{{ currentUser.name }}</span>
+      <button class="logout-btn" (click)="logout()">Cerrar Sesión</button>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="tabs-navigation">
+    <button 
+      class="tab-btn" 
+      [class.active]="activeTab === 'profile'"
+      (click)="setTab('profile')">
+      👤 Mi Perfil
+    </button>
+    <button 
+      class="tab-btn" 
+      [class.active]="activeTab === 'appointments'"
+      (click)="setTab('appointments')">
+      📅 Mis Turnos
+    </button>
+    <button 
+      class="tab-btn" 
+      [class.active]="activeTab === 'services'"
+      (click)="setTab('services')">
+      💇 Mis Servicios
+    </button>
+  </div>
+
+  <!-- Tab Content -->
+  <div class="tabs-content">
+
+    <!-- PERFIL TAB -->
+    <div *ngIf="activeTab === 'profile'" class="tab-panel">
+      <h2>Mi Perfil</h2>
+      <div class="profile-info" *ngIf="currentUser">
+        <div class="info-group">
+          <label>Nombre:</label>
+          <p>{{ currentUser.name }}</p>
+        </div>
+        <div class="info-group">
+          <label>Email:</label>
+          <p>{{ currentUser.email }}</p>
+        </div>
+        <div class="info-group">
+          <label>Teléfono:</label>
+          <p>{{ currentUser.phone || 'No especificado' }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TURNOS TAB -->
+    <div *ngIf="activeTab === 'appointments'" class="tab-panel">
+      <h2>Agendar Turno</h2>
+      <form class="form-section">
+        <div class="form-group">
+          <label>Fecha del Turno</label>
+          <input 
+            type="date" 
+            [(ngModel)]="newAppointment.date"
+            name="date"
+          />
+        </div>
+        <div class="form-group">
+          <label>Hora</label>
+          <input 
+            type="time" 
+            [(ngModel)]="newAppointment.time"
+            name="time"
+          />
+        </div>
+        <div class="form-group">
+          <label>Nombre del Cliente</label>
+          <input 
+            type="text" 
+            placeholder="Nombre completo"
+            [(ngModel)]="newAppointment.clientName"
+            name="clientName"
+          />
+        </div>
+        <div class="form-group">
+          <label>Servicio</label>
+          <select [(ngModel)]="newAppointment.service" name="service">
+            <option value="">Selecciona un servicio</option>
+            <option *ngFor="let service of services" [value]="service.name">
+              {{ service.name }}
+            </option>
+          </select>
+        </div>
+        <button type="button" class="submit-btn" (click)="addAppointment()">Agendar Turno</button>
+      </form>
+
+      <h3>Mis Turnos Agendados</h3>
+      <div class="appointments-list">
+        <div *ngIf="appointments.length === 0" class="empty-message">
+          No hay turnos agendados
+        </div>
+        <div *ngFor="let appointment of appointments" class="appointment-card">
+          <div class="appointment-info">
+            <p><strong>Cliente:</strong> {{ appointment.clientName }}</p>
+            <p><strong>Servicio:</strong> {{ appointment.service }}</p>
+            <p><strong>Fecha:</strong> {{ appointment.date }}</p>
+            <p><strong>Hora:</strong> {{ appointment.time }}</p>
+          </div>
+          <button class="delete-btn" (click)="deleteAppointment(appointment.id)">Eliminar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SERVICIOS TAB -->
+    <div *ngIf="activeTab === 'services'" class="tab-panel">
+      <h2>Mis Servicios</h2>
+      <form class="form-section">
+        <div class="form-group">
+          <label>Nombre del Servicio</label>
+          <input 
+            type="text" 
+            placeholder="Ej: Corte de cabello"
+            [(ngModel)]="newService.name"
+            name="name"
+          />
+        </div>
+        <div class="form-group">
+          <label>Duración (minutos)</label>
+          <input 
+            type="number" 
+            [(ngModel)]="newService.duration"
+            name="duration"
+            min="15"
+            step="15"
+          />
+        </div>
+        <div class="form-group">
+          <label>Precio ($)</label>
+          <input 
+            type="number" 
+            [(ngModel)]="newService.price"
+            name="price"
+            min="0"
+            step="0.01"
+          />
+        </div>
+        <button type="button" class="submit-btn" (click)="addService()">Agregar Servicio</button>
+      </form>
+
+      <h3>Servicios Disponibles</h3>
+      <div class="services-list">
+        <div *ngIf="services.length === 0" class="empty-message">
+          No hay servicios registrados
+        </div>
+        <div *ngFor="let service of services" class="service-card">
+          <div class="service-info">
+            <p><strong>{{ service.name }}</strong></p>
+            <p>Duración: {{ service.duration }} minutos</p>
+            <p>Precio: ${{ service.price.toFixed(2) }}</p>
+          </div>
+          <button class="delete-btn" (click)="deleteService(service.id)">Eliminar</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,17 @@
+.card.sobre {
+  background: rgba(255, 255, 255, 0.92);
+  border-left: 5px solid #c5b3e6;
+  border-radius: 20px;
+  padding: 35px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+
+.card.sobre h2 {
+  color: #6d5b8c;
+  margin-bottom: 15px;
+}
+
+.card.sobre p {
+  color: #444;
+  line-height: 1.6;
+}

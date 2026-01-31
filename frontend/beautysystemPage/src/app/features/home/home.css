@@ -1,0 +1,51 @@
+/* =========================
+   Fondo general
+========================= */
+:host {
+  display: block;
+  min-height: 100vh;
+  position: relative;
+  background: url('/spa-bg.png') no-repeat center center fixed;
+  background-size: cover;
+}
+
+/* Capa oscura para contraste */
+:host::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(35, 25, 50, 0.35);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* =========================
+   Contenedor principal
+========================= */
+.home {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 100px 20px 40px;
+  max-width: 1000px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+}
+
+/* Animación entrada */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.home {
+  animation: fadeSlideUp 0.6s ease-out;
+}
