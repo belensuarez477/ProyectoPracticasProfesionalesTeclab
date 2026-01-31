@@ -1,0 +1,307 @@
+// controllers/turnosController.js
+const { db, admin, isFirebaseInitialized } = require('../firebase-config');
+
+/**
+ * AGENDAR UN TURNO (cliente solicita un turno)
+ */
+exports.agendarTurno = async (req, res) => {
+  try {
+    if (!isFirebaseInitialized) {
+      return res.status(503).json({ 
+        error: 'Firebase no está inicializado',
+        mensaje: 'Por favor, configura serviceAccountKey.json para usar esta funcionalidad',
+        instrucciones: 'Ve a Firebase Console > Configuración > Cuentas de Servicio > Generar clave privada'
+      });
+    }
+
+    const clienteId = req.user.uid;
+    const { profesionalId, servicioId, fecha, hora, notas } = req.body;
+
+    if (!profesionalId || !servicioId || !fecha || !hora) {
+      return res.status(400).json({ 
+        error: 'profesionalId, servicioId, fecha y hora son requeridos' 
+      });
+    }
+
+    // Obtener el servicio para validar duración y precio
+    const servicioDoc = await db
+      .collection('users')
+      .doc(profesionalId)
+      .collection('servicios')
+      .doc(servicioId)
+      .get();
+
+    if (!servicioDoc.exists) {
+      return res.status(404).json({ 
+        error: 'Servicio no encontrado' 
+      });
+    }
+
+    const servicio = servicioDoc.data();
+
+    // Verificar disponibilidad del horario
+    const fechaObj = new Date(fecha);
+    const diaSemana = obtenerDiaSemana(fechaObj);
+
+    const horarioDoc = await db
+      .collection('users')
+      .doc(profesionalId)
+      .collection('servicios')
+      .doc(servicioId)
+      .collection('horarios')
+      .doc(diaSemana)
+      .get();
+
+    if (!horarioDoc.exists || !horarioDoc.data().disponible) {
+      return res.status(400).json({ 
+        error: `El servicio no está disponible el ${diaSemana}` 
+      });
+    }
+
+    // Verificar que la hora está dentro del rango
+    const horario = horarioDoc.data();
+    if (hora < horario.horaInicio || hora > horario.horaFin) {
+      return res.status(400).json({ 
+        error: `La hora debe estar entre ${horario.horaInicio} y ${horario.horaFin}` 
+      });
+    }
+
+    // Verificar que no hay conflicto con otro turno
+    const turnosExistentes = await db
+      .collection('turnos')
+      .where('profesionalId', '==', profesionalId)
+      .where('fecha', '==', admin.firestore.Timestamp.fromDate(fechaObj))
+      .where('estado', 'in', ['confirmado', 'pendiente'])
+      .get();
+
+    const conflicto = turnosExistentes.docs.some(doc => {
+      const turnoExistente = doc.data();
+      return tieneSuperposicion(hora, servicio.duracion, turnoExistente.hora, turnoExistente.duracion);
+    });
+
+    if (conflicto) {
+      return res.status(400).json({ 
+        error: 'Hay un conflicto con otro turno en ese horario' 
+      });
+    }
+
+    // Crear el turno
+    const turnoRef = db.collection('turnos').doc();
+
+    await turnoRef.set({
+      turnoId: turnoRef.id,
+      profesionalId: profesionalId,
+      clienteId: clienteId,
+      servicioId: servicioId,
+      servicioNombre: servicio.nombre,
+      fecha: admin.firestore.Timestamp.fromDate(fechaObj),
+      hora: hora,
+      duracion: servicio.duracion,
+      estado: 'pendiente', // El profesional debe confirmar
+      precioFinal: servicio.precio,
+      notas: notas || '',
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.status(201).json({
+      mensaje: 'Turno solicitado exitosamente',
+      turnoId: turnoRef.id,
+      estado: 'pendiente'
+    });
+
+  } catch (error) {
+    console.error('Error agendando turno:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * OBTENER TURNO
+ */
+exports.obtenerTurno = async (req, res) => {
+  try {
+    const { turnoId } = req.params;
+
+    const turnoDoc = await db.collection('turnos').doc(turnoId).get();
+
+    if (!turnoDoc.exists) {
+      return res.status(404).json({ error: 'Turno no encontrado' });
+    }
+
+    res.status(200).json({
+      turno: turnoDoc.data()
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo turno:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * OBTENER TURNOS DEL PROFESIONAL (filtrar por estado)
+ */
+exports.obtenerTurnosProfesional = async (req, res) => {
+  try {
+    const profesionalId = req.user.uid;
+    const { estado } = req.query;
+
+    let query = db
+      .collection('turnos')
+      .where('profesionalId', '==', profesionalId);
+
+    if (estado) {
+      query = query.where('estado', '==', estado);
+    }
+
+    const turnosSnapshot = await query.orderBy('fecha', 'asc').get();
+
+    const turnos = turnosSnapshot.docs.map(doc => doc.data());
+
+    res.status(200).json({
+      turnos: turnos
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo turnos del profesional:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * OBTENER TURNOS DEL CLIENTE
+ */
+exports.obtenerTurnosCliente = async (req, res) => {
+  try {
+    const clienteId = req.user.uid;
+    const { estado } = req.query;
+
+    let query = db
+      .collection('turnos')
+      .where('clienteId', '==', clienteId);
+
+    if (estado) {
+      query = query.where('estado', '==', estado);
+    }
+
+    const turnosSnapshot = await query.orderBy('fecha', 'asc').get();
+
+    const turnos = turnosSnapshot.docs.map(doc => doc.data());
+
+    res.status(200).json({
+      turnos: turnos
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo turnos del cliente:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * CONFIRMAR TURNO (profesional confirma la solicitud)
+ */
+exports.confirmarTurno = async (req, res) => {
+  try {
+    const profesionalId = req.user.uid;
+    const { turnoId } = req.params;
+    const { precioFinal } = req.body;
+
+    const turnoDoc = await db.collection('turnos').doc(turnoId).get();
+
+    if (!turnoDoc.exists) {
+      return res.status(404).json({ error: 'Turno no encontrado' });
+    }
+
+    const turno = turnoDoc.data();
+
+    if (turno.profesionalId !== profesionalId) {
+      return res.status(403).json({ 
+        error: 'No tienes permiso para confirmar este turno' 
+      });
+    }
+
+    const actualizaciones = {
+      estado: 'confirmado',
+      confirmadoEn: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (precioFinal) {
+      actualizaciones.precioFinal = parseFloat(precioFinal);
+    }
+
+    await db.collection('turnos').doc(turnoId).update(actualizaciones);
+
+    res.status(200).json({
+      mensaje: 'Turno confirmado exitosamente'
+    });
+
+  } catch (error) {
+    console.error('Error confirmando turno:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * CANCELAR TURNO
+ */
+exports.cancelarTurno = async (req, res) => {
+  try {
+    const uid = req.user.uid;
+    const { turnoId } = req.params;
+    const { motivo } = req.body;
+
+    const turnoDoc = await db.collection('turnos').doc(turnoId).get();
+
+    if (!turnoDoc.exists) {
+      return res.status(404).json({ error: 'Turno no encontrado' });
+    }
+
+    const turno = turnoDoc.data();
+
+    // Verificar que sea el cliente o profesional del turno
+    if (uid !== turno.clienteId && uid !== turno.profesionalId) {
+      return res.status(403).json({ 
+        error: 'No tienes permiso para cancelar este turno' 
+      });
+    }
+
+    await db.collection('turnos').doc(turnoId).update({
+      estado: 'cancelado',
+      motivoCancelacion: motivo || '',
+      canceladoEn: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.status(200).json({
+      mensaje: 'Turno cancelado exitosamente'
+    });
+
+  } catch (error) {
+    console.error('Error cancelando turno:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * FUNCIONES AUXILIARES
+ */
+
+// Obtener nombre del día de la semana (lunes, martes, etc)
+function obtenerDiaSemana(fecha) {
+  const dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  return dias[fecha.getDay()];
+}
+
+// Verificar si hay superposición entre dos turnos
+function tieneSuperposicion(hora1, duracion1, hora2, duracion2) {
+  const [h1, m1] = hora1.split(':').map(Number);
+  const [h2, m2] = hora2.split(':').map(Number);
+
+  const minutos1 = h1 * 60 + m1;
+  const minutos2 = h2 * 60 + m2;
+
+  const fin1 = minutos1 + duracion1;
+  const fin2 = minutos2 + duracion2;
+
+  return !(fin1 <= minutos2 || fin2 <= minutos1);
+}
