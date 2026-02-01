@@ -1,5 +1,9 @@
 // middleware/authMiddleware.js
 const { auth } = require('../firebase-config');
+const jwt = require('jsonwebtoken');
+
+// Clave secreta para JWT (debe coincidir con authController)
+const JWT_SECRET = process.env.JWT_SECRET || 'beautysystem-secret-key-2024';
 
 /**
  * MIDDLEWARE DE AUTENTICACIÓN
@@ -15,13 +19,14 @@ exports.verificarToken = async (req, res, next) => {
       });
     }
 
-    // Verificar el token
-    const decodedToken = await auth.verifyIdToken(token);
+    // Verificar el token JWT
+    const decodedToken = jwt.verify(token, JWT_SECRET);
 
     // Agregar información del usuario al objeto request
     req.user = {
       uid: decodedToken.uid,
-      email: decodedToken.email
+      email: decodedToken.email,
+      tipoUsuario: decodedToken.tipoUsuario
     };
 
     next();

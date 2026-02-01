@@ -1,5 +1,9 @@
 // controllers/authController.js
 const { db, auth, admin, isFirebaseInitialized } = require('../firebase-config');
+const jwt = require('jsonwebtoken');
+
+// Clave secreta para JWT (en producción debe estar en variable de entorno)
+const JWT_SECRET = process.env.JWT_SECRET || 'beautysystem-secret-key-2024';
 
 /**
  * REGISTRO DE USUARIO
@@ -20,7 +24,16 @@ exports.registro = async (req, res) => {
     // Validar que todos los campos requeridos estén presentes
     if (!email || !password || !nombre || !apellido || !tipoUsuario) {
       return res.status(400).json({ 
-        error: 'Todos los campos son requeridos' 
+        exito: false,
+        mensaje: 'Todos los campos son requeridos (email, password, nombre, apellido, tipoUsuario)'
+      });
+    }
+
+    // Validar tipo de usuario
+    if (tipoUsuario !== 'cliente' && tipoUsuario !== 'profesional') {
+      return res.status(400).json({
+        exito: false,
+        mensaje: 'El tipo de usuario debe ser "cliente" o "profesional"'
       });
     }
 
@@ -44,11 +57,29 @@ exports.registro = async (req, res) => {
       estado: 'activo'
     });
 
+    // Crear token JWT personalizado
+    const token = jwt.sign(
+      { 
+        uid: userAuth.uid,
+        email: email,
+        tipoUsuario: tipoUsuario
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' } // Token válido por 7 días
+    );
+
     res.status(201).json({
+      exito: true,
       mensaje: 'Usuario registrado exitosamente',
-      uid: userAuth.uid,
-      email: email,
-      tipoUsuario: tipoUsuario
+      token: token,
+      usuario: {
+        id: userAuth.uid,
+        email: email,
+        nombre: nombre,
+        apellido: apellido,
+        telefono: telefono || '',
+        tipoUsuario: tipoUsuario
+      }
     });
 
   } catch (error) {
@@ -56,16 +87,27 @@ exports.registro = async (req, res) => {
     
     if (error.code === 'auth/email-already-exists') {
       return res.status(400).json({ 
-        error: 'El email ya está registrado' 
+        exito: false,
+        mensaje: 'El email ya está registrado'
       });
     }
     if (error.code === 'auth/weak-password') {
       return res.status(400).json({ 
-        error: 'La contraseña debe tener al menos 6 caracteres' 
+        exito: false,
+        mensaje: 'La contraseña debe tener al menos 6 caracteres'
+      });
+    }
+    if (error.code === 'auth/invalid-email') {
+      return res.status(400).json({
+        exito: false,
+        mensaje: 'El formato del email no es válido'
       });
     }
     
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      exito: false,
+      mensaje: error.message || 'Error interno del servidor'
+    });
   }
 };
 
@@ -79,7 +121,8 @@ exports.login = async (req, res) => {
 
     if (!email || !password) {
       return res.status(400).json({ 
-        error: 'Email y contraseña son requeridos' 
+        exito: false,
+        mensaje: 'Email y contraseña son requeridos' 
       });
     }
 
@@ -89,21 +132,39 @@ exports.login = async (req, res) => {
     // En una aplicación real, verificarías la contraseña aquí
     // Con Firebase Admin SDK, puedes usar Google Sign-In o tokens JWT
 
-    // Crear un token personalizado
-    const token = await auth.createCustomToken(userAuth.uid);
-
     // Obtener datos del usuario desde Firestore
     const userDoc = await db.collection('users').doc(userAuth.uid).get();
+    
+    if (!userDoc.exists) {
+      return res.status(404).json({
+        exito: false,
+        mensaje: 'Datos de usuario no encontrados'
+      });
+    }
+
     const userData = userDoc.data();
 
+    // Crear token JWT personalizado
+    const token = jwt.sign(
+      { 
+        uid: userAuth.uid,
+        email: userData.email,
+        tipoUsuario: userData.tipoUsuario
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' } // Token válido por 7 días
+    );
+
     res.status(200).json({
+      exito: true,
       mensaje: 'Inicio de sesión exitoso',
       token: token,
       usuario: {
-        uid: userAuth.uid,
+        id: userAuth.uid,
         email: userData.email,
         nombre: userData.nombre,
         apellido: userData.apellido,
+        telefono: userData.telefono,
         tipoUsuario: userData.tipoUsuario
       }
     });
@@ -113,11 +174,21 @@ exports.login = async (req, res) => {
     
     if (error.code === 'auth/user-not-found') {
       return res.status(401).json({ 
-        error: 'Usuario no encontrado' 
+        exito: false,
+        mensaje: 'Usuario no encontrado' 
+      });
+    }
+    if (error.code === 'auth/invalid-email') {
+      return res.status(400).json({
+        exito: false,
+        mensaje: 'El formato del email no es válido'
       });
     }
     
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      exito: false,
+      mensaje: error.message || 'Error interno del servidor'
+    });
   }
 };
 

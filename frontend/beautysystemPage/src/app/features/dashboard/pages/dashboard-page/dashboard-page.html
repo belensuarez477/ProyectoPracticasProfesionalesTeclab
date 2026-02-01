@@ -3,7 +3,7 @@
   <div class="dashboard-header">
     <h1>Dashboard - Mi Perfil</h1>
     <div class="user-info" *ngIf="currentUser">
-      <span>{{ currentUser.name }}</span>
+      <span>{{ currentUser.nombre }} {{ currentUser.apellido }}</span>
       <button class="logout-btn" (click)="logout()">Cerrar Sesión</button>
     </div>
   </div>
@@ -39,7 +39,7 @@
       <div class="profile-info" *ngIf="currentUser">
         <div class="info-group">
           <label>Nombre:</label>
-          <p>{{ currentUser.name }}</p>
+          <p>{{ currentUser.nombre }} {{ currentUser.apellido }}</p>
         </div>
         <div class="info-group">
           <label>Email:</label>
@@ -47,7 +47,11 @@
         </div>
         <div class="info-group">
           <label>Teléfono:</label>
-          <p>{{ currentUser.phone || 'No especificado' }}</p>
+          <p>{{ currentUser.telefono || 'No especificado' }}</p>
+        </div>
+        <div class="info-group">
+          <label>Tipo de Usuario:</label>
+          <p>{{ currentUser.tipoUsuario === 'profesional' ? 'Profesional' : 'Cliente' }}</p>
         </div>
       </div>
     </div>
@@ -85,8 +89,8 @@
           <label>Servicio</label>
           <select [(ngModel)]="newAppointment.service" name="service">
             <option value="">Selecciona un servicio</option>
-            <option *ngFor="let service of services" [value]="service.name">
-              {{ service.name }}
+            <option *ngFor="let service of services" [value]="service.nombre">
+              {{ service.nombre }}
             </option>
           </select>
         </div>
@@ -115,49 +119,170 @@
       <h2>Mis Servicios</h2>
       <form class="form-section">
         <div class="form-group">
-          <label>Nombre del Servicio</label>
+          <label>Nombre del Servicio *</label>
           <input 
             type="text" 
             placeholder="Ej: Corte de cabello"
-            [(ngModel)]="newService.name"
-            name="name"
+            [(ngModel)]="newService.nombre"
+            name="nombre"
+            required
           />
         </div>
         <div class="form-group">
-          <label>Duración (minutos)</label>
+          <label>Descripción</label>
+          <textarea 
+            placeholder="Descripción del servicio"
+            [(ngModel)]="newService.descripcion"
+            name="descripcion"
+            rows="3"
+          ></textarea>
+        </div>
+        <div class="form-group">
+          <label>Duración (minutos) *</label>
           <input 
             type="number" 
-            [(ngModel)]="newService.duration"
-            name="duration"
+            [(ngModel)]="newService.duracion"
+            name="duracion"
             min="15"
             step="15"
+            required
           />
         </div>
         <div class="form-group">
-          <label>Precio ($)</label>
+          <label>Precio ($) *</label>
           <input 
             type="number" 
-            [(ngModel)]="newService.price"
-            name="price"
+            [(ngModel)]="newService.precio"
+            name="precio"
             min="0"
             step="0.01"
+            required
           />
         </div>
-        <button type="button" class="submit-btn" (click)="addService()">Agregar Servicio</button>
+        <button type="button" class="submit-btn" (click)="addService()" [disabled]="isLoading">
+          {{ isLoading ? 'Guardando...' : 'Crear Servicio' }}
+        </button>
       </form>
 
       <h3>Servicios Disponibles</h3>
       <div class="services-list">
-        <div *ngIf="services.length === 0" class="empty-message">
-          No hay servicios registrados
+        <div *ngIf="isLoading" class="empty-message">
+          Cargando servicios...
+        </div>
+        <div *ngIf="!isLoading && services.length === 0" class="empty-message">
+          No hay servicios registrados en Firebase
         </div>
         <div *ngFor="let service of services" class="service-card">
           <div class="service-info">
-            <p><strong>{{ service.name }}</strong></p>
-            <p>Duración: {{ service.duration }} minutos</p>
-            <p>Precio: ${{ service.price.toFixed(2) }}</p>
+            <p><strong>{{ service.nombre }}</strong></p>
+            <p *ngIf="service.descripcion">{{ service.descripcion }}</p>
+            <p>Duración: {{ service.duracion }} minutos</p>
+            <p>Precio: ${{ service.precio }}</p>
           </div>
-          <button class="delete-btn" (click)="deleteService(service.id)">Eliminar</button>
+          <div class="service-actions">
+            <button class="view-btn" (click)="viewServiceDetails(service)">Ver Detalles</button>
+            <button class="delete-btn" (click)="deleteService(service.servicioId)">Eliminar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal de Detalles del Servicio -->
+      <div *ngIf="selectedService" class="modal-overlay" (click)="closeServiceDetails()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>{{ selectedService.nombre }}</h2>
+            <button class="close-btn" (click)="closeServiceDetails()">✕</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="service-details">
+              <p><strong>Descripción:</strong> {{ selectedService.descripcion || 'Sin descripción' }}</p>
+              <p><strong>Duración:</strong> {{ selectedService.duracion }} minutos</p>
+              <p><strong>Precio:</strong> ${{ selectedService.precio }}</p>
+            </div>
+
+            <hr>
+
+            <h3>Configurar Horarios</h3>
+            <div class="schedule-form">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Día de la semana</label>
+                  <select [(ngModel)]="newSchedule.dia" name="dia">
+                    <option *ngFor="let day of daysOfWeek" [value]="day">{{ day | titlecase }}</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Hora Inicio</label>
+                  <input type="time" [(ngModel)]="newSchedule.horaInicio" name="horaInicio">
+                </div>
+                <div class="form-group">
+                  <label>Hora Fin</label>
+                  <input type="time" [(ngModel)]="newSchedule.horaFin" name="horaFin">
+                </div>
+              </div>
+              <button type="button" class="submit-btn" (click)="addScheduleToService()">
+                Agregar Horario
+              </button>
+            </div>
+
+            <hr>
+
+            <h3>Horarios Configurados</h3>
+            <div class="schedules-list">
+              <div *ngIf="!selectedService.horarios || selectedService.horarios.length === 0" class="empty-message">
+                No hay horarios configurados
+              </div>
+              <div *ngFor="let horario of selectedService.horarios" class="schedule-item">
+                <strong>{{ horario.dia | titlecase }}:</strong> 
+                {{ horario.horaInicio }} - {{ horario.horaFin }}
+                <span *ngIf="!horario.disponible" style="color: red;"> (No disponible)</span>
+              </div>
+            </div>
+
+            <hr>
+
+            <h3>Turnos Agendados</h3>
+            <div class="day-tabs">
+              <button 
+                *ngFor="let day of daysOfWeek" 
+                class="day-tab"
+                [class.active]="getAppointmentsByDay(day).length > 0"
+                (click)="selectedDay = day">
+                {{ day | titlecase }} ({{ getAppointmentsByDay(day).length }})
+              </button>
+            </div>
+
+            <div class="appointments-by-day">
+              <div *ngIf="serviceAppointments.length === 0" class="empty-message">
+                No hay turnos agendados para este servicio
+              </div>
+              <div *ngFor="let apt of serviceAppointments" class="appointment-item">
+                <div class="appointment-header">
+                  <h4>{{ apt.clienteNombre }}</h4>
+                  <span class="status-badge" [class]="'status-' + apt.estado">{{ apt.estado }}</span>
+                </div>
+                <div class="appointment-details">
+                  <div class="detail-row">
+                    <span class="icon">📅</span>
+                    <strong>Fecha:</strong> {{ apt.fecha | date:'EEEE, dd/MM/yyyy':'':'es' }}
+                  </div>
+                  <div class="detail-row">
+                    <span class="icon">⏰</span>
+                    <strong>Hora:</strong> {{ apt.hora }}
+                  </div>
+                  <div class="detail-row">
+                    <span class="icon">⌛</span>
+                    <strong>Duración:</strong> {{ apt.duracion }} minutos
+                  </div>
+                  <div class="detail-row">
+                    <span class="icon">💵</span>
+                    <strong>Precio:</strong> ${{ apt.precio }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

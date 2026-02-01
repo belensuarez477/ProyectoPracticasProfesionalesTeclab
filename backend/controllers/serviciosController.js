@@ -50,6 +50,7 @@ exports.crearServicio = async (req, res) => {
     });
 
     res.status(201).json({
+      exito: true,
       mensaje: 'Servicio creado exitosamente',
       servicioId: servicioRef.id
     });
@@ -101,6 +102,7 @@ exports.establecerHorarios = async (req, res) => {
     await batch.commit();
 
     res.status(200).json({
+      exito: true,
       mensaje: 'Horarios establecidos exitosamente'
     });
 
@@ -139,18 +141,23 @@ exports.obtenerServicios = async (req, res) => {
       const horarios = horariosSnapshot.docs.map(h => h.data());
 
       servicios.push({
+        id: doc.id, // Agregar el ID del documento de Firestore
         ...servicio,
         horarios: horarios
       });
     }
 
     res.status(200).json({
+      exito: true,
       servicios: servicios
     });
 
   } catch (error) {
     console.error('Error obteniendo servicios:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      exito: false,
+      error: error.message 
+    });
   }
 };
 

@@ -88,10 +88,16 @@ exports.agendarTurno = async (req, res) => {
     // Crear el turno
     const turnoRef = db.collection('turnos').doc();
 
+    // Obtener datos del cliente
+    const clienteDoc = await db.collection('users').doc(clienteId).get();
+    const clienteData = clienteDoc.exists ? clienteDoc.data() : {};
+    const clienteNombre = `${clienteData.nombre || 'Cliente'} ${clienteData.apellido || ''}`.trim();
+
     await turnoRef.set({
       turnoId: turnoRef.id,
       profesionalId: profesionalId,
       clienteId: clienteId,
+      clienteNombre: clienteNombre,
       servicioId: servicioId,
       servicioNombre: servicio.nombre,
       fecha: admin.firestore.Timestamp.fromDate(fechaObj),
@@ -104,6 +110,7 @@ exports.agendarTurno = async (req, res) => {
     });
 
     res.status(201).json({
+      exito: true,
       mensaje: 'Turno solicitado exitosamente',
       turnoId: turnoRef.id,
       estado: 'pendiente'
@@ -154,17 +161,29 @@ exports.obtenerTurnosProfesional = async (req, res) => {
       query = query.where('estado', '==', estado);
     }
 
-    const turnosSnapshot = await query.orderBy('fecha', 'asc').get();
+    // Removed .orderBy('fecha', 'asc') to avoid requiring Firestore index
+    const turnosSnapshot = await query.get();
 
-    const turnos = turnosSnapshot.docs.map(doc => doc.data());
+    // Sort in JavaScript instead
+    const turnos = turnosSnapshot.docs
+      .map(doc => doc.data())
+      .sort((a, b) => {
+        const fechaA = a.fecha?.toDate() || new Date(0);
+        const fechaB = b.fecha?.toDate() || new Date(0);
+        return fechaA.getTime() - fechaB.getTime();
+      });
 
     res.status(200).json({
+      exito: true,
       turnos: turnos
     });
 
   } catch (error) {
     console.error('Error obteniendo turnos del profesional:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      exito: false,
+      error: error.message 
+    });
   }
 };
 
@@ -184,17 +203,29 @@ exports.obtenerTurnosCliente = async (req, res) => {
       query = query.where('estado', '==', estado);
     }
 
-    const turnosSnapshot = await query.orderBy('fecha', 'asc').get();
+    // Removed .orderBy('fecha', 'asc') to avoid requiring Firestore index
+    const turnosSnapshot = await query.get();
 
-    const turnos = turnosSnapshot.docs.map(doc => doc.data());
+    // Sort in JavaScript instead
+    const turnos = turnosSnapshot.docs
+      .map(doc => doc.data())
+      .sort((a, b) => {
+        const fechaA = a.fecha?.toDate() || new Date(0);
+        const fechaB = b.fecha?.toDate() || new Date(0);
+        return fechaA.getTime() - fechaB.getTime();
+      });
 
     res.status(200).json({
+      exito: true,
       turnos: turnos
     });
 
   } catch (error) {
     console.error('Error obteniendo turnos del cliente:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      exito: false,
+      error: error.message 
+    });
   }
 };
 

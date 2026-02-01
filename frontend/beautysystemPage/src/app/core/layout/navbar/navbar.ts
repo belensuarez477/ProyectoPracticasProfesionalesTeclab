@@ -22,11 +22,13 @@ export class Navbar implements OnInit {
   };
 
   registerForm = {
-    name: '',
+    nombre: '',
+    apellido: '',
     email: '',
-    phone: '',
+    telefono: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    tipoUsuario: 'cliente' as 'cliente' | 'profesional'
   };
 
   contactForm = {
@@ -41,7 +43,7 @@ export class Navbar implements OnInit {
   ngOnInit(): void {
     this.authService.currentUser$.subscribe(user => {
       this.isAuthenticated = user !== null;
-      this.currentUserName = user?.name || '';
+      this.currentUserName = user?.nombre || '';
     });
   }
 
@@ -62,22 +64,37 @@ export class Navbar implements OnInit {
   }
 
   logout(): void {
-    this.authService.logout();
-    this.router.navigate(['/']);
+    this.authService.logout().subscribe({
+      next: () => {
+        this.router.navigate(['/']);
+      },
+      error: () => {
+        // Incluso si hay error, limpiamos la sesión localmente
+        this.router.navigate(['/']);
+      }
+    });
   }
 
   submitLogin(): void {
     if (this.loginForm.email && this.loginForm.password) {
-      const success = this.authService.login(this.loginForm.email, this.loginForm.password);
-      
-      if (success) {
-        alert('¡Iniciando sesión!');
-        this.loginForm = { email: '', password: '' };
-        this.closeModal();
-        this.navigateDashboard();
-      } else {
-        alert('Email o contraseña incorrectos');
-      }
+      this.authService.login(this.loginForm.email, this.loginForm.password).subscribe({
+        next: (response) => {
+          if (response.exito) {
+            console.log('Login exitoso desde navbar:', response);
+            this.loginForm = { email: '', password: '' };
+            this.closeModal();
+            this.router.navigate(['/dashboard']).then(
+              () => console.log('Navegación al dashboard exitosa'),
+              err => console.error('Error navegando:', err)
+            );
+          } else {
+            alert(response.mensaje || 'Email o contraseña incorrectos');
+          }
+        },
+        error: () => {
+          alert('Error al conectar con el servidor');
+        }
+      });
     } else {
       alert('Por favor completa todos los campos');
     }
@@ -85,7 +102,8 @@ export class Navbar implements OnInit {
 
   submitRegister(): void {
     if (
-      this.registerForm.name &&
+      this.registerForm.nombre &&
+      this.registerForm.apellido &&
       this.registerForm.email &&
       this.registerForm.password &&
       this.registerForm.confirmPassword
@@ -95,27 +113,41 @@ export class Navbar implements OnInit {
         return;
       }
 
-      const success = this.authService.register(
-        this.registerForm.name,
-        this.registerForm.email,
-        this.registerForm.phone,
-        this.registerForm.password
-      );
+      const registerData = {
+        nombre: this.registerForm.nombre,
+        apellido: this.registerForm.apellido,
+        email: this.registerForm.email,
+        telefono: this.registerForm.telefono,
+        password: this.registerForm.password,
+        tipoUsuario: this.registerForm.tipoUsuario
+      };
 
-      if (success) {
-        alert('¡Cuenta creada exitosamente! Ahora inicia sesión.');
-        this.registerForm = {
-          name: '',
-          email: '',
-          phone: '',
-          password: '',
-          confirmPassword: ''
-        };
-        this.closeModal();
-        setTimeout(() => this.openModal('login'), 500);
-      } else {
-        alert('Este email ya está registrado');
-      }
+      this.authService.register(registerData).subscribe({
+        next: (response) => {
+          console.log('Respuesta del registro:', response);
+          if (response.exito) {
+            alert('¡Cuenta creada exitosamente! Ahora inicia sesión.');
+            this.registerForm = {
+              nombre: '',
+              apellido: '',
+              email: '',
+              telefono: '',
+              password: '',
+              confirmPassword: '',
+              tipoUsuario: 'cliente'
+            };
+            this.closeModal();
+            setTimeout(() => this.openModal('login'), 500);
+          } else {
+            alert(response.mensaje || 'Error al registrar usuario');
+          }
+        },
+        error: (error) => {
+          console.error('Error completo:', error);
+          const mensaje = error.error?.mensaje || error.error?.error || error.message || 'Error al conectar con el servidor';
+          alert('Error: ' + mensaje);
+        }
+      });
     } else {
       alert('Por favor completa todos los campos requeridos');
     }
