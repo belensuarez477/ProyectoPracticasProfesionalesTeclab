@@ -8,12 +8,21 @@ Write-Host "================================`n" -ForegroundColor Cyan
 
 # Función para hacer login y obtener token
 function Get-AuthToken {
-    param($email, $password)
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$email,
+        [Parameter(Mandatory = $true)]
+        [SecureString]$password
+    )
     
     Write-Host "🔐 Iniciando sesión con: $email" -ForegroundColor Yellow
+    $passwordPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($password)
+    )
+
     $body = @{
         email = $email
-        password = $password
+        password = $passwordPlain
     } | ConvertTo-Json
 
     try {
@@ -35,10 +44,9 @@ function Get-AuthToken {
 Write-Host "Por favor ingresa tus credenciales:" -ForegroundColor Cyan
 $email = Read-Host "Email"
 $password = Read-Host "Contraseña" -AsSecureString
-$passwordPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($password))
 
 # Obtener token
-$token = Get-AuthToken -email $email -password $passwordPlain
+$token = Get-AuthToken -email $email -password $password
 
 if (-not $token) {
     Write-Host "`n❌ No se pudo obtener el token. Verifica tus credenciales." -ForegroundColor Red

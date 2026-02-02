@@ -78,4 +78,17 @@ router.put(
   turnosController.cancelarTurno
 );
 
+/**
+ * PUT /turnos/:turnoId/asistencia
+ * Actualiza el estado de asistencia del turno (solo profesional)
+ * Headers: Authorization: Bearer token
+ * Body: { estadoAsistencia: 'presente' | 'ausente' | 'cancelado' | 'reprogramado' }
+ */
+router.put(
+  '/:turnoId/asistencia',
+  verificarToken,
+  verificarProfesional,
+  turnosController.actualizarAsistencia
+);
+
 module.exports = router;

@@ -15,7 +15,7 @@ exports.agendarTurno = async (req, res) => {
     }
 
     const clienteId = req.user.uid;
-    const { profesionalId, servicioId, fecha, hora, notas } = req.body;
+    const { profesionalId, servicioId, fecha, hora, notas, clienteNombre } = req.body;
 
     if (!profesionalId || !servicioId || !fecha || !hora) {
       return res.status(400).json({ 
@@ -40,7 +40,8 @@ exports.agendarTurno = async (req, res) => {
     const servicio = servicioDoc.data();
 
     // Verificar disponibilidad del horario
-    const fechaObj = new Date(fecha);
+    const [year, month, day] = String(fecha).split('-').map(Number);
+    const fechaObj = new Date(year, month - 1, day);
     const diaSemana = obtenerDiaSemana(fechaObj);
 
     const horarioDoc = await db
@@ -91,13 +92,13 @@ exports.agendarTurno = async (req, res) => {
     // Obtener datos del cliente
     const clienteDoc = await db.collection('users').doc(clienteId).get();
     const clienteData = clienteDoc.exists ? clienteDoc.data() : {};
-    const clienteNombre = `${clienteData.nombre || 'Cliente'} ${clienteData.apellido || ''}`.trim();
+    const nombreClienteFinal = (clienteNombre || '').trim() || `${clienteData.nombre || 'Cliente'} ${clienteData.apellido || ''}`.trim();
 
     await turnoRef.set({
       turnoId: turnoRef.id,
       profesionalId: profesionalId,
       clienteId: clienteId,
-      clienteNombre: clienteNombre,
+      clienteNombre: nombreClienteFinal,
       servicioId: servicioId,
       servicioNombre: servicio.nombre,
       fecha: admin.firestore.Timestamp.fromDate(fechaObj),
@@ -309,6 +310,56 @@ exports.cancelarTurno = async (req, res) => {
 
   } catch (error) {
     console.error('Error cancelando turno:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * ACTUALIZAR ASISTENCIA DEL TURNO (solo profesional)
+ */
+exports.actualizarAsistencia = async (req, res) => {
+  try {
+    const profesionalId = req.user.uid;
+    const { turnoId } = req.params;
+    const { estadoAsistencia } = req.body;
+
+    const estadosValidos = ['presente', 'ausente', 'cancelado', 'reprogramado'];
+    if (!estadoAsistencia || !estadosValidos.includes(estadoAsistencia)) {
+      return res.status(400).json({
+        error: 'estadoAsistencia inválido'
+      });
+    }
+
+    const turnoDoc = await db.collection('turnos').doc(turnoId).get();
+
+    if (!turnoDoc.exists) {
+      return res.status(404).json({ error: 'Turno no encontrado' });
+    }
+
+    const turno = turnoDoc.data();
+
+    if (turno.profesionalId !== profesionalId) {
+      return res.status(403).json({
+        error: 'No tienes permiso para actualizar este turno'
+      });
+    }
+
+    const actualizaciones = {
+      estadoAsistencia: estadoAsistencia,
+      asistenciaActualizadaEn: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (estadoAsistencia === 'cancelado') {
+      actualizaciones.estado = 'cancelado';
+    }
+
+    await db.collection('turnos').doc(turnoId).update(actualizaciones);
+
+    res.status(200).json({
+      mensaje: 'Asistencia actualizada exitosamente'
+    });
+  } catch (error) {
+    console.error('Error actualizando asistencia:', error);
     res.status(500).json({ error: error.message });
   }
 };

@@ -87,9 +87,9 @@
         </div>
         <div class="form-group">
           <label>Servicio</label>
-          <select [(ngModel)]="newAppointment.service" name="service">
+          <select [(ngModel)]="newAppointment.serviceId" name="serviceId">
             <option value="">Selecciona un servicio</option>
-            <option *ngFor="let service of services" [value]="service.nombre">
+            <option *ngFor="let service of services" [value]="service.servicioId || service.id">
               {{ service.nombre }}
             </option>
           </select>
@@ -159,17 +159,20 @@
             required
           />
         </div>
-        <button type="button" class="submit-btn" (click)="addService()" [disabled]="isLoading">
-          {{ isLoading ? 'Guardando...' : 'Crear Servicio' }}
+        <button type="button" class="submit-btn" (click)="addService()" [disabled]="isSavingService">
+          {{ isSavingService ? 'Guardando...' : 'Crear Servicio' }}
         </button>
       </form>
 
       <h3>Servicios Disponibles</h3>
       <div class="services-list">
-        <div *ngIf="isLoading" class="empty-message">
+        <div *ngIf="servicesError" class="empty-message">
+          {{ servicesError }}
+        </div>
+        <div *ngIf="isLoadingServices" class="empty-message">
           Cargando servicios...
         </div>
-        <div *ngIf="!isLoading && services.length === 0" class="empty-message">
+        <div *ngIf="!isLoadingServices && services.length === 0" class="empty-message">
           No hay servicios registrados en Firebase
         </div>
         <div *ngFor="let service of services" class="service-card">
@@ -181,7 +184,7 @@
           </div>
           <div class="service-actions">
             <button class="view-btn" (click)="viewServiceDetails(service)">Ver Detalles</button>
-            <button class="delete-btn" (click)="deleteService(service.servicioId)">Eliminar</button>
+            <button class="delete-btn" (click)="deleteService(service.servicioId || service.id)">Eliminar</button>
           </div>
         </div>
       </div>
@@ -260,7 +263,7 @@
               <div *ngFor="let apt of serviceAppointments" class="appointment-item">
                 <div class="appointment-header">
                   <h4>{{ apt.clienteNombre }}</h4>
-                  <span class="status-badge" [class]="'status-' + apt.estado">{{ apt.estado }}</span>
+                  <span class="status-badge" [class]="'status-' + apt.estadoAsistencia">{{ apt.estadoAsistencia }}</span>
                 </div>
                 <div class="appointment-details">
                   <div class="detail-row">
@@ -276,8 +279,22 @@
                     <strong>Duración:</strong> {{ apt.duracion }} minutos
                   </div>
                   <div class="detail-row">
+                    <span class="icon">✅</span>
+                    <strong>Asistencia:</strong> {{ apt.estadoAsistencia }}
+                  </div>
+                  <div class="detail-row">
                     <span class="icon">💵</span>
                     <strong>Precio:</strong> ${{ apt.precio }}
+                  </div>
+                  <div class="detail-row">
+                    <span class="icon">🛠️</span>
+                    <strong>Actualizar:</strong>
+                    <select [ngModel]="apt.estadoAsistencia" (ngModelChange)="updateAttendance(apt, $event)">
+                      <option value="presente">Presente</option>
+                      <option value="ausente">Ausente</option>
+                      <option value="cancelado">Cancelado</option>
+                      <option value="reprogramado">Reprogramado</option>
+                    </select>
                   </div>
                 </div>
               </div>

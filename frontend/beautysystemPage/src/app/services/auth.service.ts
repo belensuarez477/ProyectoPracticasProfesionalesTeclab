@@ -45,10 +45,16 @@ export class AuthService {
     private http: HttpClient
   ) {
     this.isBrowser = isPlatformBrowser(this.platformId);
+    if (this.isBrowser) {
+      const storedUser = this.loadUserFromStorage();
+      if (storedUser) {
+        this.currentUserSubject.next(storedUser);
+      }
+    }
   }
 
   private loadUserFromStorage(): User | null {
-    if (typeof window === 'undefined' || !localStorage) return null;
+    if (!this.isBrowser || typeof window === 'undefined' || !localStorage) return null;
     const userJson = localStorage.getItem(this.currentUserKey);
     return userJson ? JSON.parse(userJson) : null;
   }
@@ -113,14 +119,14 @@ export class AuthService {
   }
 
   private saveSession(token: string, usuario: User): void {
-    if (typeof window === 'undefined' || !localStorage) return;
+    if (!this.isBrowser || typeof window === 'undefined' || !localStorage) return;
     localStorage.setItem(this.tokenKey, token);
     localStorage.setItem(this.currentUserKey, JSON.stringify(usuario));
     this.currentUserSubject.next(usuario);
   }
 
   private clearSession(): void {
-    if (typeof window === 'undefined' || !localStorage) return;
+    if (!this.isBrowser || typeof window === 'undefined' || !localStorage) return;
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.currentUserKey);
     this.currentUserSubject.next(null);
@@ -135,7 +141,7 @@ export class AuthService {
   }
 
   getToken(): string | null {
-    if (typeof window === 'undefined' || !localStorage) return null;
+    if (!this.isBrowser || typeof window === 'undefined' || !localStorage) return null;
     return localStorage.getItem(this.tokenKey);
   }
 

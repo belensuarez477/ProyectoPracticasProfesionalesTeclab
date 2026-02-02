@@ -23,6 +23,7 @@ export interface AgendarTurnoData {
   fecha: string;
   hora: string;
   notas?: string;
+  clienteNombre?: string;
 }
 
 @Injectable({
@@ -84,6 +85,12 @@ export class TurnosService {
   cancelarTurno(turnoId: string, motivo: string): Observable<any> {
     const url = getFullUrl(`${API_CONFIG.endpoints.turnos.base}/${turnoId}/cancelar`);
     return this.http.put(url, { motivo }, { headers: this.getAuthHeaders() });
+  }
+
+  // Actualizar estado de asistencia (profesional)
+  actualizarAsistencia(turnoId: string, estadoAsistencia: 'presente' | 'ausente' | 'cancelado' | 'reprogramado'): Observable<any> {
+    const url = getFullUrl(`${API_CONFIG.endpoints.turnos.base}/${turnoId}/asistencia`);
+    return this.http.put(url, { estadoAsistencia }, { headers: this.getAuthHeaders() });
   }
 
   // Marcar turno como completado (profesional)

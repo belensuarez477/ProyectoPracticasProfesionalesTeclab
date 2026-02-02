@@ -547,6 +547,21 @@
   font-weight: 600;
 }
 
+.status-presente {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.status-ausente {
+  color: #6c757d;
+  font-weight: 600;
+}
+
+.status-reprogramado {
+  color: #17a2b8;
+  font-weight: 600;
+}
+
 .service-actions {
   display: flex;
   gap: 10px;

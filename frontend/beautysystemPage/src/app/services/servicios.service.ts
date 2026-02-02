@@ -14,6 +14,7 @@ export interface Servicio {
   duracion: number;
   activo?: boolean;
   fechaCreacion?: string;
+  optimistic?: boolean;
 }
 
 export interface Horario {
@@ -61,6 +62,12 @@ export class ServiciosService {
   // Obtener todos los servicios disponibles (para clientes)
   obtenerServiciosDisponibles(): Observable<any> {
     const url = getFullUrl('/servicios/disponibles');
+    return this.http.get(url);
+  }
+
+  // Obtener servicios de un profesional (vista pública)
+  obtenerServiciosProfesional(profesionalId: string): Observable<any> {
+    const url = getFullUrl(`/servicios/profesional/${profesionalId}`);
     return this.http.get(url);
   }
 

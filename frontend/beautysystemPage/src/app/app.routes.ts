@@ -5,4 +5,7 @@ import { DashboardPage } from './features/dashboard/pages/dashboard-page/dashboa
 export const routes: Routes = [
   { path: '', component: HomePage },
   { path: 'dashboard', component: DashboardPage },
+  { path: 'dashboard/servicios', component: DashboardPage },
+  { path: 'dashboard/turnos', component: DashboardPage },
+  { path: 'dashboard/perfil', component: DashboardPage },
 ];
