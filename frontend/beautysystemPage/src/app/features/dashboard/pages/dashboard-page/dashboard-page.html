@@ -98,11 +98,20 @@
       </form>
 
       <h3>Mis Turnos Agendados</h3>
+      <div class="form-group">
+        <label>Filtrar por servicio</label>
+        <select [(ngModel)]="appointmentServiceFilter" name="appointmentServiceFilter" (change)="onAppointmentServiceFilterChange()">
+          <option value="">Todos los servicios</option>
+          <option *ngFor="let service of services" [value]="service.servicioId || service.id">
+            {{ service.nombre }}
+          </option>
+        </select>
+      </div>
       <div class="appointments-list">
-        <div *ngIf="appointments.length === 0" class="empty-message">
+        <div *ngIf="filteredAppointments.length === 0" class="empty-message">
           No hay turnos agendados
         </div>
-        <div *ngFor="let appointment of appointments" class="appointment-card">
+        <div *ngFor="let appointment of filteredAppointments" class="appointment-card">
           <div class="appointment-info">
             <p><strong>Cliente:</strong> {{ appointment.clientName }}</p>
             <p><strong>Servicio:</strong> {{ appointment.service }}</p>
@@ -251,16 +260,16 @@
                 *ngFor="let day of daysOfWeek" 
                 class="day-tab"
                 [class.active]="getAppointmentsByDay(day).length > 0"
-                (click)="selectedDay = day">
+                (click)="selectDay(day)">
                 {{ day | titlecase }} ({{ getAppointmentsByDay(day).length }})
               </button>
             </div>
 
             <div class="appointments-by-day">
-              <div *ngIf="serviceAppointments.length === 0" class="empty-message">
+              <div *ngIf="filteredServiceAppointments.length === 0" class="empty-message">
                 No hay turnos agendados para este servicio
               </div>
-              <div *ngFor="let apt of serviceAppointments" class="appointment-item">
+              <div *ngFor="let apt of filteredServiceAppointments" class="appointment-item">
                 <div class="appointment-header">
                   <h4>{{ apt.clienteNombre }}</h4>
                   <span class="status-badge" [class]="'status-' + apt.estadoAsistencia">{{ apt.estadoAsistencia }}</span>

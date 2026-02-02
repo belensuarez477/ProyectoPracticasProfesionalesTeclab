@@ -43,20 +43,51 @@ exports.agendarTurno = async (req, res) => {
     const [year, month, day] = String(fecha).split('-').map(Number);
     const fechaObj = new Date(year, month - 1, day);
     const diaSemana = obtenerDiaSemana(fechaObj);
+    const diaKey = normalizarDia(diaSemana);
 
-    const horarioDoc = await db
+    let horarioDoc = await db
       .collection('users')
       .doc(profesionalId)
       .collection('servicios')
       .doc(servicioId)
       .collection('horarios')
-      .doc(diaSemana)
+      .doc(diaKey)
       .get();
 
+    if (!horarioDoc.exists && diaKey !== diaSemana) {
+      horarioDoc = await db
+        .collection('users')
+        .doc(profesionalId)
+        .collection('servicios')
+        .doc(servicioId)
+        .collection('horarios')
+        .doc(diaSemana)
+        .get();
+    }
+
     if (!horarioDoc.exists || !horarioDoc.data().disponible) {
-      return res.status(400).json({ 
-        error: `El servicio no está disponible el ${diaSemana}` 
-      });
+      const horariosSnapshot = await db
+        .collection('users')
+        .doc(profesionalId)
+        .collection('servicios')
+        .doc(servicioId)
+        .collection('horarios')
+        .get();
+
+      const horarioAlternativo = horariosSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .find(h => {
+          const diaData = normalizarDia(h.dia || h.diaKey || h.id);
+          return diaData === diaKey && h.disponible !== false;
+        });
+
+      if (horarioAlternativo) {
+        horarioDoc = { data: () => horarioAlternativo };
+      } else {
+        return res.status(400).json({ 
+          error: `El servicio no está disponible el ${diaSemana}` 
+        });
+      }
     }
 
     // Verificar que la hora está dentro del rango
@@ -372,6 +403,15 @@ exports.actualizarAsistencia = async (req, res) => {
 function obtenerDiaSemana(fecha) {
   const dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
   return dias[fecha.getDay()];
+}
+
+// Normaliza el nombre del día para usarlo como clave de documento
+function normalizarDia(dia) {
+  return String(dia || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 }
 
 // Verificar si hay superposición entre dos turnos

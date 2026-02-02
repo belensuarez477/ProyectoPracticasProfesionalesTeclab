@@ -82,16 +82,18 @@ exports.establecerHorarios = async (req, res) => {
     const batch = db.batch();
 
     for (const horario of horarios) {
+      const diaKey = normalizarDia(horario.dia);
       const horarioRef = db
         .collection('users')
         .doc(uid)
         .collection('servicios')
         .doc(servicioId)
         .collection('horarios')
-        .doc(horario.dia);
+        .doc(diaKey);
 
       batch.set(horarioRef, {
         dia: horario.dia,
+        diaKey: diaKey,
         horaInicio: horario.horaInicio,
         horaFin: horario.horaFin,
         disponible: horario.disponible !== false,
@@ -111,6 +113,15 @@ exports.establecerHorarios = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Normaliza el nombre del día para usarlo como clave de documento
+function normalizarDia(dia) {
+  return String(dia || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
 
 /**
  * OBTENER SERVICIOS DEL PROFESIONAL

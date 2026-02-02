@@ -26,6 +26,7 @@ interface Appointment {
 export class DashboardPage implements OnInit {
   currentUser: User | null = null;
   appointments: Appointment[] = [];
+  filteredAppointments: Appointment[] = [];
   services: Servicio[] = [];
   activeTab = 'profile';
   isLoading = false;
@@ -35,6 +36,7 @@ export class DashboardPage implements OnInit {
   private servicesLoadTimeoutId: any = null;
   selectedService: any = null;
   serviceAppointments: any[] = [];
+  filteredServiceAppointments: any[] = [];
   selectedDay: string = 'lunes';
   daysOfWeek = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
 
@@ -44,6 +46,8 @@ export class DashboardPage implements OnInit {
     clientName: '',
     serviceId: ''
   };
+
+  appointmentServiceFilter: string = '';
 
   newService = {
     nombre: '',
@@ -130,6 +134,7 @@ export class DashboardPage implements OnInit {
               service: t.servicioNombre || 'Servicio'
             };
           });
+          this.applyAppointmentsFilter();
           console.log('Turnos profesional cargados:', this.appointments.length);
         },
         error: (err: any) => console.error('Error al cargar turnos:', err)
@@ -148,6 +153,7 @@ export class DashboardPage implements OnInit {
               service: t.servicioNombre || 'Servicio'
             };
           });
+          this.applyAppointmentsFilter();
           console.log('Turnos cliente cargados:', this.appointments.length);
         },
         error: (err: any) => console.error('Error al cargar turnos:', err)
@@ -200,6 +206,8 @@ export class DashboardPage implements OnInit {
           );
           this.services = [...optimisticServices, ...fetchedServices];
           console.log('Servicios cargados exitosamente:', this.services.length);
+          this.syncSelectedServiceFromList();
+          this.applyAppointmentsFilter();
           if (this.services.length === 0) {
             this.loadServicesPublicFallback();
           }
@@ -246,6 +254,8 @@ export class DashboardPage implements OnInit {
           }));
           this.services = fetchedServices;
           console.log('Servicios cargados por fallback público:', this.services.length);
+          this.syncSelectedServiceFromList();
+          this.applyAppointmentsFilter();
         }
       },
       error: (err: any) => {
@@ -291,6 +301,7 @@ export class DashboardPage implements OnInit {
     const servicioSeleccionado = this.services.find(
       s => (s.servicioId || s.id) === this.newAppointment.serviceId
     );
+    const selectedServiceId = this.newAppointment.serviceId;
 
     if (!this.currentUser?.id) {
       alert('No hay usuario autenticado');
@@ -315,6 +326,12 @@ export class DashboardPage implements OnInit {
               this.loadServiceAppointments(servicioId);
             }
           }
+          if (this.selectedService) {
+            const selectedId = this.selectedService.servicioId || this.selectedService.id;
+            if (selectedId && selectedId === selectedServiceId) {
+              this.loadServiceAppointments(selectedId);
+            }
+          }
         } else {
           alert(response.mensaje || 'No se pudo agendar el turno');
         }
@@ -328,6 +345,25 @@ export class DashboardPage implements OnInit {
 
   deleteAppointment(id: string): void {
     this.appointments = this.appointments.filter(a => a.id !== id);
+    this.applyAppointmentsFilter();
+  }
+
+  onAppointmentServiceFilterChange(): void {
+    this.applyAppointmentsFilter();
+  }
+
+  private applyAppointmentsFilter(): void {
+    const filterId = this.appointmentServiceFilter;
+    if (!filterId) {
+      this.filteredAppointments = [...this.appointments];
+      return;
+    }
+    const selectedService = this.services.find(s => (s.servicioId || s.id) === filterId);
+    const serviceName = (selectedService?.nombre || '').toString().trim().toLowerCase();
+    this.filteredAppointments = this.appointments.filter(appointment => {
+      const appointmentService = (appointment.service || '').toString().trim().toLowerCase();
+      return serviceName ? appointmentService === serviceName : false;
+    });
   }
 
   addService(): void {
@@ -426,18 +462,23 @@ export class DashboardPage implements OnInit {
 
   viewServiceDetails(service: any): void {
     console.log('Abriendo detalles del servicio:', service);
-    this.selectedService = service;
+    this.selectedService = {
+      ...service,
+      horarios: Array.isArray(service?.horarios) ? service.horarios : []
+    };
     const servicioId = service?.servicioId || service?.id;
     if (servicioId) {
       this.loadServiceAppointments(servicioId);
     } else {
       this.serviceAppointments = [];
+      this.filteredServiceAppointments = [];
     }
   }
 
   closeServiceDetails(): void {
     this.selectedService = null;
     this.serviceAppointments = [];
+    this.filteredServiceAppointments = [];
   }
 
   loadServiceAppointments(servicioId: string): void {
@@ -476,16 +517,20 @@ export class DashboardPage implements OnInit {
               };
             })
             .sort((a: any, b: any) => a.fecha.getTime() - b.fecha.getTime());
+
+          this.filteredServiceAppointments = this.getAppointmentsByDay(this.selectedDay);
           
           console.log('Turnos filtrados y mapeados:', this.serviceAppointments);
         } else {
           console.warn('No hay turnos en la respuesta:', response);
           this.serviceAppointments = [];
+          this.filteredServiceAppointments = [];
         }
       },
       error: (err: any) => {
         console.error('Error cargando turnos del servicio:', err);
         this.serviceAppointments = [];
+        this.filteredServiceAppointments = [];
       }
     });
   }
@@ -510,6 +555,25 @@ export class DashboardPage implements OnInit {
       next: (response: any) => {
         if (response.exito) {
           alert('✓ Horario configurado exitosamente');
+          const nuevoHorario = {
+            dia: this.newSchedule.dia,
+            horaInicio: this.newSchedule.horaInicio,
+            horaFin: this.newSchedule.horaFin,
+            disponible: this.newSchedule.disponible
+          };
+          if (!this.selectedService.horarios) {
+            this.selectedService.horarios = [];
+          }
+          this.selectedService.horarios = [...this.selectedService.horarios, nuevoHorario];
+          const servicioId = this.selectedService.servicioId || this.selectedService.id;
+          if (servicioId) {
+            this.services = this.services.map(service => {
+              const currentId = (service as any).servicioId || (service as any).id;
+              if (currentId !== servicioId) return service;
+              const horariosActuales = Array.isArray((service as any).horarios) ? (service as any).horarios : [];
+              return { ...service, horarios: [...horariosActuales, nuevoHorario] } as any;
+            });
+          }
           this.loadServices();
           this.viewServiceDetails(this.selectedService);
         }
@@ -533,6 +597,11 @@ export class DashboardPage implements OnInit {
     });
   }
 
+  selectDay(day: string): void {
+    this.selectedDay = day;
+    this.filteredServiceAppointments = this.getAppointmentsByDay(day);
+  }
+
   updateAttendance(appointment: any, estadoAsistencia: 'presente' | 'ausente' | 'cancelado' | 'reprogramado'): void {
     this.turnosService.actualizarAsistencia(appointment.id, estadoAsistencia).subscribe({
       next: () => {
@@ -544,6 +613,18 @@ export class DashboardPage implements OnInit {
         alert('No se pudo actualizar la asistencia');
       }
     });
+  }
+
+  private syncSelectedServiceFromList(): void {
+    if (!this.selectedService) return;
+    const selectedId = this.selectedService.servicioId || this.selectedService.id;
+    const refreshed = this.services.find(s => (s.servicioId || s.id) === selectedId);
+    if (refreshed) {
+      this.selectedService = {
+        ...refreshed,
+        horarios: Array.isArray((refreshed as any).horarios) ? (refreshed as any).horarios : []
+      };
+    }
   }
 
   private normalizeDate(value: any): Date {
